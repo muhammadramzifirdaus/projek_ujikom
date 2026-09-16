@@ -17,18 +17,34 @@
     @endif
 
     <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+        <!-- Header & Toolbar Pengembalian -->
         <div class="p-5 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
             <h3 class="text-lg font-bold text-gray-800">Daftar Transaksi Pengembalian</h3>
 
-            <form action="{{ route('admin.pengembalian.index') }}" method="GET" class="flex w-full md:w-80">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama peminjam / status..."
-                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 text-sm font-semibold rounded-r-lg transition">
-                    Cari
-                </button>
-            </form>
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                <!-- Form Cari -->
+                <form action="{{ route('admin.pengembalian.index') }}" method="GET" class="flex w-full md:w-80">
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama peminjam / status..."
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 text-sm font-semibold rounded-r-lg transition">
+                        Cari
+                    </button>
+                </form>
+
+                <!-- TOMBOL PROSES PENGEMBALIAN (Global / Ke transaksi aktif terbanyak) -->
+                @php
+                    $peminjamanAktif = $peminjamans->firstWhere('status', 'dipinjam');
+                @endphp
+                @if($peminjamanAktif)
+                    <a href="{{ route('admin.pengembalian.proses', $peminjamanAktif->id) }}"
+                        class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition whitespace-nowrap shadow-sm">
+                        + Proses Pengembalian
+                    </a>
+                @endif
+            </div>
         </div>
 
+        <!-- Tabel Transaksi Pengembalian -->
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
@@ -59,7 +75,7 @@
                             <td class="py-3 px-4 border-b">
                                 <span class="px-2.5 py-1 text-xs font-semibold rounded-full
                                     @if($pinjam->status == 'dipinjam') bg-blue-100 text-blue-800
-                                    @elseif($pinjam->status == 'dikembalikan') bg-emerald-100 text-emerald-800
+                                    @elseif($pinjam->status == 'dikembalikan' || $pinjam->status == 'selesai') bg-emerald-100 text-emerald-800
                                     @else bg-red-100 text-red-800 @endif">
                                     {{ ucfirst($pinjam->status) }}
                                 </span>
@@ -81,13 +97,13 @@
                                         Proses Kembali
                                     </a>
                                 @else
-                                    <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">Selesai</span>
+                                    <span class="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded font-medium">Selesai</span>
                                 @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-4 text-center text-gray-500">Tidak ada data transaksi pengembalian.</td>
+                            <td colspan="6" class="py-6 text-center text-gray-500 text-sm">Tidak ada data transaksi pengembalian.</td>
                         </tr>
                     @endforelse
                 </tbody>

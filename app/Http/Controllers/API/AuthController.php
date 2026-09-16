@@ -1,65 +1,118 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\API;
 
+use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Exception;
 
 class AuthController extends Controller
 {
-    // Menampilkan Form Login Web
-    public function showLoginForm()
+    // Endpoint Registrasi API (POST /api/register)
+    public function register(Request $request)
     {
-        // Jika sudah login, langsung arahkan ke dashboard sesuai role
-        if (Auth::check()) {
-            return $this->redirectUserByRole();
-        }
-
-        return view('auth.login');
-    }
-
-    // Proses Login Web
-    public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required',
+        $validator = Validator::make($request->all(), [
+            'name'                  => 'required|string|max:255',
+            'email'                 => 'required|string|email|max:255|unique:users',
+            'password'              => 'required|string|min:8|confirmed',
+            'no_hp'                 => 'nullable|string|max:20',
+            'alamat'                => 'nullable|string',
         ]);
 
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
-
-            return $this->redirectUserByRole();
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
         }
 
-        return back()->withErrors([
-            'email' => 'Kredensial yang diberikan tidak cocok dengan data kami.',
-        ])->onlyInput('email');
+        try {
+            $user = User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+                'role'     => 'peminjam',
+                'no_hp'    => $request->no_hp,
+                'alamat'   => $request->alamat,
+            ]);
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'success'      => true,
+                'message'      => 'Registrasi berhasil',
+                'data'         => $user,
+                'access_token' => $token,
+                'token_type'   => 'Bearer',
+            ], 201);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan pada server',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 
-    // Redirect berdasarkan Role User agar tidak Infinite Loop
-    private function redirectUserByRole()
+    // Endpoint Login API (POST /api/login)
+    public function login(Request $request)
     {
-        $role = Auth::user()->role;
+        $validator = Validator::make($request->all(), [
+            'email'    => 'required|email',
+            'password' => 'required|string',
+        ]);
 
-        if ($role === 'admin') {
-            return redirect()->intended(route('admin.dashboard'));
-        } elseif ($role === 'petugas') {
-            return redirect()->intended(route('petugas.peminjaman.index'));
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors'  => $validator->errors()
+            ], 422);
         }
 
-        // Default redirect jika role lain (misal peminjam)
-        return redirect()->intended('/');
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kredensial login tidak cocok'
+            ], 401);
+        }
+
+        $user = User::where('email', $request->email)->firstOrFail();
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Login berhasil',
+            'data'         => $user,
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+        ], 200);
     }
 
-    // Proses Logout Web
+    // Endpoint Profile User API (GET /api/me)
+    public function me(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'Data user berhasil diambil',
+            'data'    => $request->user()
+        ], 200);
+    }
+
+    // Endpoint Logout API (POST /api/logout)
     public function logout(Request $request)
     {
-        Auth::logout();
+        $request->user()->currentAccessToken()->delete();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect()->route('login');
+        return response()->json([
+            'success' => true,
+            'message' => 'Logout berhasil'
+        ], 200);
     }
 }

@@ -4,16 +4,23 @@ namespace App\Observers;
 
 use App\Models\Alat;
 use App\Models\LogAktivitas;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class AlatObserver
 {
     private function catatLog(string $pesan): void
     {
-        LogAktivitas::create([
-            'user_id'   => Auth::id(),
-            'aktivitas' => $pesan,
-        ]);
+        // Ambil ID user yang login. Jika NULL (misal dari Seeder), gunakan ID user admin/pertama
+        $userId = Auth::id() ?? User::where('role', 'admin')->value('id') ?? User::value('id');
+
+        // Hanya catat jika ada ID user yang valid
+        if ($userId) {
+            LogAktivitas::create([
+                'user_id'   => $userId,
+                'aktivitas' => $pesan,
+            ]);
+        }
     }
 
     public function created(Alat $alat): void

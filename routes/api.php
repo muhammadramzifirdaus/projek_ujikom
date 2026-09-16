@@ -46,7 +46,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Petugas Routes
     Route::middleware('role.petugas')->group(function () {
+        Route::get('/peminjaman', [PeminjamanController::class, 'index']);
         Route::post('/peminjaman/{peminjaman}/approve', [PeminjamanController::class, 'approve']);
+        Route::get('/pengembalian', [PengembalianController::class, 'index']);
         Route::post('/pengembalian', [PengembalianController::class, 'store']);
         Route::get('/laporan-peminjaman', [LaporanController::class, 'index']);
     });

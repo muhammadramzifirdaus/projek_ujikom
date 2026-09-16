@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PetugasController;
+use App\Http\Controllers\PeminjamController;
 use App\Http\Controllers\AuthController;
 
 // Route Guest (Halaman Login)
@@ -69,4 +70,11 @@ Route::middleware(['auth', 'role:petugas,admin'])->prefix('petugas')->name('petu
     // Laporan
     Route::get('/laporan', [PetugasController::class, 'laporan'])->name('laporan.index');
     Route::get('/laporan/cetak', [PetugasController::class, 'cetakLaporan'])->name('laporan.cetak');
+});
+
+// Group Route Peminjam (Dipisah mandiri)
+Route::middleware(['auth', 'role:peminjam'])->prefix('peminjam')->name('peminjam.')->group(function () {
+    Route::get('/katalog', [PeminjamController::class, 'katalogAlat'])->name('katalog');
+    Route::post('/peminjaman', [PeminjamController::class, 'ajukanPeminjaman'])->name('ajukan');
+    Route::get('/riwayat', [PeminjamController::class, 'riwayatPeminjaman'])->name('riwayat');
 });

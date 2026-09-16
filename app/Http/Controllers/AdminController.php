@@ -366,7 +366,7 @@ class AdminController extends Controller
         $peminjaman = Peminjaman::with('detailPinjam.alat')->findOrFail($id);
 
         $request->validate([
-            'status' => 'required|in:diajukan,dipinjam,dikembalikan,telat',
+            'status' => 'required|in:diajukan,dipinjam,dikembalikan,selesai,telat,ditolak',
         ]);
 
         DB::beginTransaction();
@@ -427,7 +427,7 @@ class AdminController extends Controller
                         $q->where('name', 'like', "%{$search}%");
                     });
             })
-            ->whereIn('status', ['dipinjam', 'dikembalikan', 'telat'])
+            ->whereIn('status', ['dipinjam', 'dikembalikan', 'selesai', 'telat'])
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -448,13 +448,11 @@ class AdminController extends Controller
         $tglKembaliPlan = Carbon::parse($peminjaman->tgl_kembali_plan)->startOfDay();
         $tglKembaliReal = Carbon::now()->startOfDay();
 
-        // Hitung selisih hari keterlambatan otomatis
         $hariTerlambat = 0;
         if ($tglKembaliReal->greaterThan($tglKembaliPlan)) {
             $hariTerlambat = $tglKembaliPlan->diffInDays($tglKembaliReal);
         }
 
-        // Tarif denda keterlambatan Rp2.500 / hari
         $dendaTerlambat = $hariTerlambat * 2500;
 
         return view('admin.pengembalian.proses', compact('peminjaman', 'hariTerlambat', 'dendaTerlambat', 'tglKembaliReal'));
@@ -482,7 +480,6 @@ class AdminController extends Controller
             $statusAkhir = $hariIni->greaterThan($tglKembaliPlan) ? 'telat' : 'dikembalikan';
             $totalDenda = $request->denda_keterlambatan + $request->denda_kerusakan;
 
-            // 1. Catat ke tabel pengembalian
             Pengembalian::create([
                 'peminjaman_id'   => $peminjaman->id,
                 'tgl_kembali'     => $hariIni->toDateString(),
@@ -491,15 +488,12 @@ class AdminController extends Controller
                 'petugas_id'      => auth()->id(),
             ]);
 
-            // 2. Perbarui status transaksi peminjaman
             $peminjaman->update(['status' => $statusAkhir]);
 
-            // 3. Tambah kembali stok alat ke gudang
             foreach ($peminjaman->detailPinjam as $detail) {
                 $detail->alat->increment('stok', $detail->jumlah);
             }
 
-            // 4. Catat Log Aktivitas
             LogAktivitas::create([
                 'user_id'   => auth()->id(),
                 'aktivitas' => "Memproses pengembalian peminjaman #{$peminjaman->id} (Kondisi: {$request->kondisi_kembali}, Total Denda: Rp" . number_format($totalDenda, 0, ',', '.') . ")",

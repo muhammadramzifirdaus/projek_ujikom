@@ -11,10 +11,7 @@ class AuthController extends Controller
     public function showLoginForm()
     {
         if (Auth::check()) {
-            if (Auth::user()->role === "admin") {
-                return redirect()->route("admin.dashboard");
-            }
-            return redirect("/");
+            return $this->redirectByRole();
         }
 
         return view("auth.login");
@@ -30,17 +27,34 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-
-            if (Auth::user()->role === "admin") {
-                return redirect()->intended(route("admin.dashboard"))->with("success", "Selamat datang kembali, Admin!");
-            }
-
-            return redirect()->intended("/");
+            return $this->redirectByRole();
         }
 
         return back()->withErrors([
             "email" => "Kredensial yang diberikan tidak cocok dengan data kami.",
         ])->onlyInput("email");
+    }
+
+    // Helper redirect berdasarkan role user
+    private function redirectByRole()
+    {
+        $role = Auth::user()->role;
+
+        if ($role === 'admin') {
+            return redirect()->route("admin.dashboard")->with("success", "Selamat datang kembali, Admin!");
+        } 
+        
+        if ($role === 'petugas') {
+            return redirect()->route("petugas.peminjaman.index")->with("success", "Selamat datang kembali, Petugas!");
+        } 
+        
+        if ($role === 'peminjam') {
+            return redirect()->route("peminjam.katalog")->with("success", "Selamat datang!");
+        }
+
+        // Fallback jika role tidak dikenali
+        Auth::logout();
+        return redirect()->route("login")->withErrors(["email" => "Role pengguna tidak valid atau belum terdaftar."]);
     }
 
     // Memproses logout web
