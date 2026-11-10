@@ -5,16 +5,32 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PetugasController;
 use App\Http\Controllers\PeminjamController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\ProfileController;
+
+// Landing Page (Halaman Utama /)
+Route::get('/', function () {
+    return view('welcome');
+})->name('welcome');
+
+// Register
+Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register');
+Route::post('/register', [RegisterController::class, 'register']);
 
 // Route Guest (Halaman Login)
 Route::middleware('guest')->group(function () {
-    Route::get('/', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::get('/login', [AuthController::class, 'showLoginForm']);
+    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.process');
 });
 
 // Logout
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Profil User (Bisa diakses semua role yang sudah login)
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+});
 
 // Group Route Admin
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -51,7 +67,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('/peminjaman/{id}/status', [AdminController::class, 'updateStatusPeminjaman'])->name('peminjaman.updateStatus');
     Route::delete('/peminjaman/{id}', [AdminController::class, 'destroyPeminjaman'])->name('peminjaman.destroy');
 
-    // CRUD Pengembalian Web (Sudah ditambahkan name: 'pengembalian.create' & 'pengembalian.proses')
+    // CRUD Pengembalian
     Route::get('/pengembalian', [AdminController::class, 'indexPengembalian'])->name('pengembalian.index');
     Route::get('/pengembalian/{id}/proses', [AdminController::class, 'createPengembalian'])->name('pengembalian.create');
     Route::post('/pengembalian/{id}', [AdminController::class, 'storePengembalian'])->name('pengembalian.store');

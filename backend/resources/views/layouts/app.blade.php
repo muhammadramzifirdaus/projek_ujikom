@@ -16,12 +16,11 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex antialiased">
 
-    <!-- SIDEBAR DARK EMERALD (#047857) -->
-    <aside class="w-64 bg-[#047857] text-white flex flex-col justify-between shrink-0 min-h-screen shadow-lg">
-        <div>
+    <!-- SIDEBAR DARK EMERALD (#047857) - STICKY & FLOATING -->
+    <aside class="w-64 bg-[#047857] text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 shadow-lg z-20">
+        <div class="overflow-y-auto flex-1">
             <!-- Sidebar Header / Logo PinjamIn -->
             <div class="p-5 flex items-center gap-3.5 border-b border-emerald-800/60">
-                <!-- Wrapper Logo Transparan & Ukuran Gambar Logo Maksimal -->
                 <div class="w-12 h-12 rounded-2xl bg-white/15 border border-white/40 backdrop-blur-md p-0.5 flex items-center justify-center shrink-0 shadow-sm">
                     <img src="{{ asset('assets/img/pinjaminlogo.svg') }}" alt="Logo PinjamIn" class="w-11 h-11 object-contain drop-shadow-sm">
                 </div>
@@ -111,20 +110,33 @@
             </nav>
         </div>
 
-        <!-- Logged In User Card (Bawah Sidebar) -->
-        <div class="p-3.5 m-3 bg-emerald-900/40 rounded-2xl flex items-center gap-3 border border-emerald-700/50">
-            <div class="w-9 h-9 rounded-full bg-white text-[#065F46] font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
-                {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 2)) }}
-            </div>
-            <div class="overflow-hidden">
-                <span class="block text-[9px] text-emerald-200 font-bold uppercase tracking-wider">LOGGED IN AS:</span>
-                <h4 class="text-xs font-bold text-white truncate">{{ auth()->user()->name ?? 'User' }}</h4>
+        <!-- Logged In User Card (Bawah Sidebar & Can Be Clicked to Edit Profile) -->
+        <div class="p-3 border-t border-emerald-800/60 bg-[#047857]">
+            <div onclick="openProfileModal()" 
+                 class="p-3 bg-emerald-900/50 hover:bg-emerald-900/80 rounded-2xl flex items-center gap-3 border border-emerald-700/50 cursor-pointer transition group shadow-md">
+                
+                <!-- Avatar / Foto Profil (Panggilan Asset Storage Langsung) -->
+                @if(auth()->check() && auth()->user()->foto_profil)
+                    <img src="{{ asset('storage/' . auth()->user()->foto_profil) }}" 
+                         alt="Foto Profil" 
+                         class="w-9 h-9 rounded-full object-cover shrink-0 border border-white/30 shadow-sm"
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-9 h-9 rounded-full bg-white text-[#065F46] font-bold text-xs flex items-center justify-center shrink-0 shadow-sm\'>{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 2)) }}</div>';">
+                @else
+                    <div class="w-9 h-9 rounded-full bg-white text-[#065F46] font-bold text-xs flex items-center justify-center shrink-0 shadow-sm">
+                        {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 2)) }}
+                    </div>
+                @endif
+
+                <div class="overflow-hidden">
+                    <span class="block text-[9px] text-emerald-200 font-bold uppercase tracking-wider">LOGGED IN AS:</span>
+                    <h4 class="text-xs font-bold text-white truncate group-hover:underline">{{ auth()->user()->name ?? 'User' }}</h4>
+                </div>
             </div>
         </div>
     </aside>
 
     <!-- MAIN CONTENT CONTAINER -->
-    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+    <main class="flex-1 flex flex-col min-w-0 min-h-screen">
 
         <!-- NAVBAR ATAS -->
         <header class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -143,11 +155,114 @@
         </header>
 
         <!-- KONTEN UTAMA HALAMAN -->
-        <div class="p-8 space-y-6">
+        <div class="p-8 space-y-6 flex-1">
+            @if(session('success'))
+                <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-bold flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>{{ session('success') }}</span>
+                </div>
+            @endif
+
             @yield('content')
         </div>
 
     </main>
+
+    <!-- MODAL POP-UP EDIT PROFIL -->
+    @auth
+    <div id="profileModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-gray-100 text-gray-800">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-bold text-lg text-gray-800">Edit Profil Saya</h3>
+                <button type="button" onclick="closeProfileModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
+            </div>
+
+            <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                @csrf
+                @method('PUT')
+
+                <!-- Upload & Preview Foto Profil -->
+                <div class="flex flex-col items-center gap-2">
+                    <div class="relative w-20 h-20">
+                        @if(auth()->user()->foto_profil)
+                            <img id="avatarPreview" 
+                                 src="{{ asset('storage/' . auth()->user()->foto_profil) }}" 
+                                 class="w-20 h-20 rounded-2xl object-cover border-2 border-[#047857] shadow-md">
+                        @else
+                            <div id="avatarFallback" class="w-20 h-20 rounded-2xl bg-emerald-100 text-[#047857] font-bold text-xl flex items-center justify-center border-2 border-[#047857]">
+                                {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
+                            </div>
+                        @endif
+                    </div>
+
+                    <label for="input_foto_profil" class="text-xs font-bold text-[#047857] hover:underline cursor-pointer mt-1">
+                        <span>Ganti Foto Profil</span>
+                    </label>
+                    <input id="input_foto_profil" type="file" name="foto_profil" accept="image/*" class="hidden" onchange="previewImage(event)">
+                </div>
+
+                <!-- Nama Lengkap -->
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Nama Lengkap</label>
+                    <input type="text" name="name" value="{{ old('name', auth()->user()->name) }}" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#047857]">
+                </div>
+
+                <!-- No. HP -->
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">No. HP / WhatsApp</label>
+                    <input type="text" name="no_hp" value="{{ old('no_hp', auth()->user()->no_hp) }}" placeholder="08XXXXXXXXXX" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#047857]">
+                </div>
+
+                <!-- Alamat -->
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Alamat</label>
+                    <textarea name="alamat" rows="2" placeholder="Alamat lengkap kamu" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#047857]">{{ old('alamat', auth()->user()->alamat) }}</textarea>
+                </div>
+
+                <!-- Ganti Password (Opsional) -->
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Password Baru (Opsional)</label>
+                    <input type="password" name="password" placeholder="Kosongkan jika tidak diubah" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-[#047857]">
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeProfileModal()" class="w-1/2 py-2.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-xs hover:bg-gray-200 transition">Batal</button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-[#047857] text-white font-bold rounded-xl text-xs hover:bg-emerald-800 transition shadow-md">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JS Untuk Modal Edit Profil -->
+    <script>
+        function openProfileModal() {
+            document.getElementById('profileModal').classList.remove('hidden');
+            document.getElementById('profileModal').classList.add('flex');
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.add('hidden');
+            document.getElementById('profileModal').classList.remove('flex');
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('avatarPreview');
+                    const fallback = document.getElementById('avatarFallback');
+                    if (preview) {
+                        preview.src = e.target.result;
+                    } else if (fallback) {
+                        fallback.outerHTML = `<img id="avatarPreview" src="${e.target.result}" class="w-20 h-20 rounded-2xl object-cover border-2 border-[#047857] shadow-md">`;
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+    </script>
+    @endauth
 
 </body>
 </html>
